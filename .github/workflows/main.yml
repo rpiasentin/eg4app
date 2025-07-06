@@ -1,0 +1,41 @@
+name: Build Windows EXE & Deploy Web
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          pip install pyinstaller fastapi uvicorn[standard]
+      - name: Build EXE
+        run: |
+          pyinstaller backend/main.py --onefile --name eg4app
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eg4app-exe
+          path: dist/eg4app.exe
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy site
+        run: |
+          mkdir -p public
+          cp -r web/* public/
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
