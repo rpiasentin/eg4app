@@ -1,0 +1,57 @@
+name: Build Win & Mac apps + Deploy Web
+
+on:
+  push:
+    branches: [ "build-refresh" ]   # run only on this branch for now
+
+permissions:
+  contents: write      # allow gh-pages push
+  pages:    write
+
+jobs:
+  build-windows:
+    name: Windows EXE (REL2)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pyinstaller fastapi uvicorn[standard]
+      - name: Build .exe
+        run: pyinstaller backend/main.py --onefile --name eg4app_REL2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eg4app_REL2_windows
+          path: dist/eg4app_REL2.exe
+
+  build-macos:
+    name: macOS .app (REL2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pyinstaller fastapi uvicorn[standard]
+      - name: Build .app
+        run: |
+          pyinstaller backend/main.py --onefile --windowed --name "EG4 Float Ctl REL2"
+          ditto -c -k --sequesterRsrc --keepParent \
+                "dist/EG4 Float Ctl REL2.app" eg4app_REL2_mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eg4app_REL2_mac
+          path: eg4app_REL2_mac.zip
+
+  deploy-pages:
+    name: Deploy Web UI
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p public
+          cp -r web/* public/
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
