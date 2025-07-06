@@ -10,11 +10,35 @@ async function fetchHistory() {
   return await res.json();
 }
 
+async function fetchActions() {
+  const res = await fetch(API + "/actions");
+  return await res.json();
+}
+
 function renderStatus(s) {
   document.getElementById("status").innerText =
     `Battery: ${s.battery_voltage.toFixed(2)} V  |  Absorb: ${s.absorb_voltage} V  |  Float: ${s.float_voltage} V`;
   document.getElementById("absorb").value = s.absorb_voltage;
   document.getElementById("float").value = s.float_voltage;
+}
+
+function renderActions(actions) {
+  const ul = document.getElementById("actions");
+  ul.innerHTML = "";
+  if (actions.length === 0) {
+    ul.innerHTML = "<li class='gray'>No actions taken yet.</li>";
+    return;
+  }
+  actions.slice().reverse().forEach(a => {
+    const date = new Date(a.timestamp * 1000).toLocaleString();
+    let text = `[${date}] ${a.action}`;
+    if (a.absorb !== undefined && a.float !== undefined)
+      text += ` — Absorb: ${a.absorb} V, Float: ${a.float} V`;
+    const li = document.createElement("li");
+    li.className = "mb1";
+    li.textContent = text;
+    ul.appendChild(li);
+  });
 }
 
 async function init() {
@@ -38,6 +62,9 @@ async function init() {
       scales: { y: { beginAtZero: false } }
     }
   });
+
+  const actions = await fetchActions();
+  renderActions(actions);
 }
 
 document.getElementById("setbtn").addEventListener("click", async () => {
@@ -50,6 +77,8 @@ document.getElementById("setbtn").addEventListener("click", async () => {
   });
   const st = await fetchStatus();
   renderStatus(st);
+  const actions = await fetchActions();
+  renderActions(actions);
 });
 
 init();
