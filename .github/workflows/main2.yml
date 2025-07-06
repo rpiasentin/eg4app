@@ -1,0 +1,66 @@
+name: Build for Windows & macOS + Deploy Web
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  build-windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller fastapi uvicorn[standard]
+      - name: Build Windows EXE
+        run: |
+          pyinstaller backend/main.py --onefile --name eg4app
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eg4app-windows
+          path: dist/eg4app.exe
+
+  build-macos:
+    name: Build macOS CLI
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller fastapi uvicorn[standard]
+      - name: Build macOS app
+        run: |
+          pyinstaller backend/main.py --onefile --name eg4app2
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eg4app-macos
+          path: dist/eg4app
+
+  deploy-pages:
+    name: Deploy Web UI to GitHub Pages
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy web UI files
+        run: |
+          mkdir -p public
+          cp -r web/* public/
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
